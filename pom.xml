@@ -51,7 +51,7 @@
             <artifactId>javacv-platform</artifactId>
             <version>${javacpp.version}</version>
         </dependency>
-      
+        
         <dependency>
             <groupId>org.processing</groupId>
             <artifactId>core</artifactId>
