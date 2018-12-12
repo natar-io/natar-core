@@ -22,13 +22,6 @@ package tech.lity.rea.markers;
 import tech.lity.rea.javacvprocessing.ProjectiveDeviceP;
 import java.util.ArrayList;
 import java.util.Arrays;
-import org.bytedeco.javacpp.ARToolKitPlus;
-
-import static org.bytedeco.javacpp.ARToolKitPlus.*;
-import org.bytedeco.javacpp.IntPointer;
-import org.bytedeco.javacpp.opencv_core;
-import static org.bytedeco.javacpp.opencv_core.*;
-import static org.bytedeco.javacpp.opencv_imgproc.cvFindCornerSubPix;
 import org.bytedeco.javacv.Marker;
 import processing.core.PGraphics;
 import processing.core.PMatrix3D;
@@ -131,120 +124,6 @@ public class DetectedMarker implements Cloneable {
         return new double[]{x, y};
     }
 
-    public IplImage getImage() {
-        return getImage(id);
-    }
-
-    public static ARToolKitPlus.MultiTracker createDetector(int width, int height) {
-        ARToolKitPlus.MultiTracker tracker = new ARToolKitPlus.MultiTracker(width, height);
-
-        tracker.setPixelFormat(PIXEL_FORMAT_LUM);
-        tracker.setBorderWidth(0.125f);
-//        tracker.setThreshold(128);
-        tracker.activateAutoThreshold(true);
-//        tracker.setNumAutoThresholdRetries(10);
-
-        tracker.setUndistortionMode(UNDIST_NONE);
-
-//      tracker.setPoseEstimator(POSE_ESTIMATOR_RPP);
-//      tracker.setPoseEstimator(ARToolKitPlus.POSE_ESTIMATOR_ORIGINAL);
-//      tracker.setPoseEstimator(ARToolKitPlus.POSE_ESTIMATOR_ORIGINAL_CONT);
-        tracker.setPoseEstimator(ARToolKitPlus.POSE_ESTIMATOR_RPP);
-
-        tracker.setMarkerMode(MARKER_ID_BCH);
-//        tracker.setImageProcessingMode(IMAGE_HALF_RES);
-        tracker.setImageProcessingMode(ARToolKitPlus.IMAGE_FULL_RES);
-        tracker.setUseDetectLite(false);
-        return tracker;
-    }
-
-    private static IplImage imageCache[] = new IplImage[4096];
-
-    public static IplImage getImage(int id) {
-        if (imageCache[id] == null) {
-            imageCache[id] = IplImage.create(8, 8, IPL_DEPTH_8U, 1);
-            createImagePatternBCH(id, imageCache[id].getByteBuffer());
-        }
-        return imageCache[id];
-    }
-
-    public static DetectedMarker[] detect(ARToolKitPlus.TrackerMultiMarker tracker, opencv_core.IplImage image) {
-
-        int cameraWidth = image.width();
-        int cameraHeight = image.height();
-        // TODO: check imgWith and init width.
-
-        CvPoint2D32f corners = new CvPoint2D32f(4);
-        CvMemStorage memory = CvMemStorage.create();
-//        CvMat points = CvMat.create(1, 4, CV_32F, 2);
-        Mat points = new Mat(1, 4, CV_32F, 2);
-
-        CvSize subPixelSize = null, subPixelZeroZone = null;
-        CvTermCriteria subPixelTermCriteria = null;
-        int subPixelWindow = 11;
-
-        subPixelSize = cvSize(subPixelWindow / 2, subPixelWindow / 2);
-        subPixelZeroZone = cvSize(-1, -1);
-        subPixelTermCriteria = cvTermCriteria(CV_TERMCRIT_EPS, 100, 0.001);
-
-//        tracker.setThreshold(128);
-        int n = 0;
-        IntPointer markerNum = new IntPointer(1);
-        ARToolKitPlus.ARMarkerInfo markers = new ARToolKitPlus.ARMarkerInfo(null);
-//        tracker.arDetectMarkerLite(image.imageData(), tracker.getThreshold() /* 100 */, markers, markerNum);
-        tracker.arDetectMarker(image.imageData(), tracker.getThreshold() /* 100 */, markers, markerNum);
-        DetectedMarker[] markers2 = new DetectedMarker[markerNum.get(0)];
-
-        for (int i = 0; i < markers2.length && !markers.isNull(); i++) {
-
-            markers.position(i);
-            int id = markers.id();
-            if (id < 0) {
-                // no detected ID...
-                continue;
-            }
-            int dir = markers.dir();
-            float confidence = markers.cf();
-            float[] vertex = new float[8];
-            markers.vertex().get(vertex);
-
-            int w = subPixelWindow / 2 + 1;
-            if (vertex[0] - w < 0 || vertex[0] + w >= cameraWidth || vertex[1] - w < 0 || vertex[1] + w >= cameraHeight
-                    || vertex[2] - w < 0 || vertex[2] + w >= cameraWidth || vertex[3] - w < 0 || vertex[3] + w >= cameraHeight
-                    || vertex[4] - w < 0 || vertex[4] + w >= cameraWidth || vertex[5] - w < 0 || vertex[5] + w >= cameraHeight
-                    || vertex[6] - w < 0 || vertex[6] + w >= cameraWidth || vertex[7] - w < 0 || vertex[7] + w >= cameraHeight) {
-                // too tight for cvFindCornerSubPix...
-
-                continue;
-            }
-
-            // TODO: major bug here -> free error...
-//            opencv_core.CvMat points = opencv_core.CvMat.create(1, 4, CV_32F, 2);
-//            points.getFloatBuffer().put(vertex);
-//            opencv_core.CvBox2D box = cvMinAreaRect2(points, memory);
-//
-//            float bw = box.size().width();
-//            float bh = box.size().height();
-//            cvClearMemStorage(memory);
-//            if (bw <= 0 || bh <= 0 || bw / bh < 0.1 || bw / bh > 10) {
-//                // marker is too "flat" to have been IDed correctly...
-//                continue;
-//            }
-            for (int j = 0; j < 4; j++) {
-                corners.position(j).put(vertex[2 * j], vertex[2 * j + 1]);
-            }
-
-            cvFindCornerSubPix(image, corners.position(0), 4, subPixelSize, subPixelZeroZone, subPixelTermCriteria);
-            double[] d = {corners.position((4 - dir) % 4).x(), corners.position((4 - dir) % 4).y(),
-                corners.position((5 - dir) % 4).x(), corners.position((5 - dir) % 4).y(),
-                corners.position((6 - dir) % 4).x(), corners.position((6 - dir) % 4).y(),
-                corners.position((7 - dir) % 4).x(), corners.position((7 - dir) % 4).y()};
-
-            markers2[n++] = new DetectedMarker(id, d, confidence);
-        }
-        return Arrays.copyOf(markers2, n);
-    }
-
     /**
      * Find the 3D position of detected markers. It uses the solvePnP function
      * of OpenCV.
@@ -262,7 +141,7 @@ public class DetectedMarker implements Cloneable {
         ArrayList<PVector> objectPoints = new ArrayList<PVector>();
         ArrayList<PVector> imagePoints = new ArrayList<PVector>();
         int k = 0;
-        
+
         for (DetectedMarker detected : detectedMarkers) {
             if (markersFromSVG.containsKey(detected.id)) {
 
@@ -291,7 +170,7 @@ public class DetectedMarker implements Cloneable {
         }
 //        if (k < 4) {
         if (k < 1) { // TODO: Better error Handling
-            return new PMatrix3D(); 
+            return new PMatrix3D();
         }
 
         PVector[] objectArray = new PVector[k];
@@ -300,14 +179,14 @@ public class DetectedMarker implements Cloneable {
         imageArray = imagePoints.toArray(imageArray);
 
         ProjectiveDeviceP pdp = camera.getProjectiveDevice();
-        
+
 //        System.out.println("Pose estimation: " + pdp.toString());
 //        System.out.println("Object/image: ");
 //        for(int i = 0; i < k; i++)
 //        {
 //            System.out.println(objectArray[i] + " " + imageArray[i]);
 //        }
-            return pdp.estimateOrientation(objectArray, imageArray);
+        return pdp.estimateOrientation(objectArray, imageArray);
 //        return pdp.estimateOrientationRansac(objectArray, imageArray);
     }
 

@@ -42,8 +42,9 @@ import processing.core.PVector;
 import processing.data.JSONObject;
 import tech.lity.rea.javacvprocessing.ProjectiveDeviceP;
 import tech.lity.rea.markers.DetectedMarker;
+import tech.lity.rea.utils.WithSize;
 
-public abstract class Camera extends Observable implements PConstants {
+public abstract class Camera extends Observable implements PConstants, WithSize {
 
     public static Camera INVALID_CAMERA = new CameraNectar("-1");
 
@@ -109,6 +110,7 @@ public abstract class Camera extends Observable implements PConstants {
 
     // Properties (instanciated)
     protected ProjectiveDeviceP pdp = null;
+
     protected PMatrix3D camIntrinsicsP3D;
 
     // Instance variables
@@ -120,13 +122,11 @@ public abstract class Camera extends Observable implements PConstants {
     protected String calibrationARToolkit;
     protected CameraThread thread = null;
 
-
     public String getCameraDescription() {
         return cameraDescription;
     }
 
     abstract public void start();
-
 
     /**
      * Get the information if the camera is started (ready to give images).
@@ -394,7 +394,6 @@ public abstract class Camera extends Observable implements PConstants {
 //        return this.sheets;
 //    }
 //    
-
     /**
      * It makes the camera update continuously.
      */
@@ -569,6 +568,10 @@ public abstract class Camera extends Observable implements PConstants {
 
     public int getSize() {
         return width * height;
+    }
+
+    public ProjectiveDeviceP getPdp() {
+        return pdp;
     }
 
     /**

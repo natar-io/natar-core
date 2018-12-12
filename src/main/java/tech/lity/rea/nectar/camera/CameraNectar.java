@@ -43,7 +43,7 @@ public class CameraNectar extends CameraRGBIRDepth {
     private DetectedMarker[] currentMarkers;
     Jedis redisGet;
 
-    protected CameraNectar(String cameraName) {
+    public CameraNectar(String cameraName) {
         this.cameraDescription = cameraName;
     }
 
