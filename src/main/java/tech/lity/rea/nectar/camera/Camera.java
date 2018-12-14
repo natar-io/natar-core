@@ -41,8 +41,8 @@ import processing.core.PMatrix3D;
 import processing.core.PVector;
 import processing.data.JSONObject;
 import tech.lity.rea.javacvprocessing.ProjectiveDeviceP;
-import tech.lity.rea.markers.DetectedMarker;
-import tech.lity.rea.utils.WithSize;
+import tech.lity.rea.nectar.markers.DetectedMarker;
+import tech.lity.rea.nectar.utils.WithSize;
 
 public abstract class Camera extends Observable implements PConstants, WithSize {
 
@@ -127,6 +127,22 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
     }
 
     abstract public void start();
+
+    /**
+     * The public camera is the main one: usually the color.
+     *
+     * @param camera
+     * @return
+     */
+    public Camera getPublicCamera() {
+        if (this instanceof CameraRGBIRDepth) {
+            if (((CameraRGBIRDepth) this).getActingCamera() == null) {
+                throw new RuntimeException("Papart: Impossible to use the mainCamera, use a subCamera or set the ActAsX methods.");
+            }
+            return ((CameraRGBIRDepth) this).getActingCamera();
+        }
+        return this;
+    }
 
     /**
      * Get the information if the camera is started (ready to give images).

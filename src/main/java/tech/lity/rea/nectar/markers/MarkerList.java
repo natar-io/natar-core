@@ -17,10 +17,13 @@
  * Public License along with this library; If not, see
  * <http://www.gnu.org/licenses/>.
  */
-package tech.lity.rea.markers;
+package tech.lity.rea.nectar.markers;
 
 import java.util.HashMap;
+import java.util.Set;
 import processing.core.PVector;
+import processing.data.JSONArray;
+import processing.data.JSONObject;
 
 /**
  *
@@ -55,6 +58,32 @@ public class MarkerList extends HashMap<Integer, MarkerSvg> {
     public void setSheetSize(float x, float y) {
         this.sheetSize.x = x;
         this.sheetSize.y = y;
+    }
+
+    public JSONArray toJSON() {
+        JSONArray output = new JSONArray();
+        for (Integer key : this.keySet()) {
+
+            JSONObject element = new JSONObject();
+            element.setInt("id", key);
+            element.setJSONObject("marker", this.get(key).toJSON());
+            output.append(element);
+        }
+        return output;
+    }
+    
+    public static MarkerList createFromJSON(JSONArray input) {
+        MarkerList list = new MarkerList();
+        for(int i= 0; i < input.size(); i++){
+            
+            JSONObject arr = input.getJSONObject(i);
+            int id = arr.getInt("id");
+            JSONObject markerJson = arr.getJSONObject("marker");
+            MarkerSvg marker = MarkerSvg.createFromJSON(markerJson);
+            
+            list.put(id, marker);
+        }
+        return list;
     }
 
 }

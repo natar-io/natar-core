@@ -24,7 +24,7 @@ import tech.lity.rea.nectar.camera.Camera;
 import tech.lity.rea.nectar.camera.ImageUtils;
 import java.nio.ByteBuffer;
 
-import tech.lity.rea.utils.WithSize;
+import tech.lity.rea.nectar.utils.WithSize;
 import java.util.ArrayList;
 import org.bytedeco.javacpp.opencv_core.CvMat;
 import org.bytedeco.javacpp.opencv_core.IplImage;

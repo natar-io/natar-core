@@ -40,7 +40,8 @@ import redis.clients.jedis.ZParams;
 import redis.clients.jedis.params.sortedset.ZAddParams;
 import redis.clients.jedis.params.sortedset.ZIncrByParams;
 import tech.lity.rea.javacvprocessing.ProjectiveDeviceP;
-import tech.lity.rea.markers.DetectedMarker;
+import tech.lity.rea.nectar.markers.DetectedMarker;
+import tech.lity.rea.nectar.tracking.MarkerBoard;
 
 /**
  *
@@ -97,7 +98,7 @@ public class CameraNectar extends CameraRGBIRDepth {
     public PMatrix3D getTableLocation() {
         return getLocation("table");
     }
-    
+
     @Override
     public void start() {
         try {
@@ -141,11 +142,48 @@ public class CameraNectar extends CameraRGBIRDepth {
         colorCamera.setFrameRate(30);
         colorCamera.isConnected = true;
 
+        // Load the calibration... 
+        JSONObject calib = JSONObject.parse(redis.get(cameraDescription + ":calibration"));
+        colorCamera.setCalibration(calib);
+
         if (!getMode) {
             new RedisThread(redis, new ImageListener(colorCamera.getPixelFormat()), cameraDescription).start();
         }
     }
 
+    /**
+     * Fetch the calibrations(intrinsics) from Redis / Nectar.
+     */
+    public void updateCalibrations() {
+        try {
+            JSONObject calib = JSONObject.parse(this.get(cameraDescription + ":calibration"));
+            colorCamera.setCalibration(calib);
+            JSONObject calib2 = JSONObject.parse(this.get(cameraDescription + ":depth:calibration"));
+            depthCamera.setCalibration(calib2);
+        } catch (Exception e) {
+            System.out.println("cannot load camera and depth camear calibrations.");
+        }
+    }
+
+    /**
+     * Fetch the extrinsics (color-depth) from Redis / Nectar.
+     * @param connection optionnal can be null
+     */
+    public void updateExtrinsics(Jedis connection) {
+        PMatrix3D extr;
+        if (connection != null) {
+            extr = ProjectiveDeviceP.JSONtoPMatrix(JSONArray.parse(connection.get(cameraDescription + ":extrinsics:depth")));
+        } else {
+            extr = ProjectiveDeviceP.JSONtoPMatrix(JSONArray.parse(this.get(cameraDescription + ":extrinsics:depth")));
+        }
+        // set extrinsics...
+        depthCamera.setExtrinsics(extr);
+    }
+
+    /**
+     * Create a new connection. 
+     * @return 
+     */
     public Jedis createConnection() {
         return new Jedis(DEFAULT_REDIS_HOST, DEFAULT_REDIS_PORT);
     }
@@ -164,6 +202,16 @@ public class CameraNectar extends CameraRGBIRDepth {
             depthCamera.isConnected = true;
             // TODO: Standard Depth format
             depthCamera.setPixelFormat(PixelFormat.OPENNI_2_DEPTH);
+
+            updateExtrinsics(redis2);
+
+            try {
+                // set extrinsics...
+                PMatrix3D extr = ProjectiveDeviceP.JSONtoPMatrix(JSONArray.parse(redis2.get(cameraDescription + ":extrinsics:depth")));
+                depthCamera.setExtrinsics(extr);
+            } catch (Exception e) {
+                System.out.println("Could not load extrinsics: " + e);
+            }
             if (!getMode) {
                 new RedisThread(redis2, new ImageListener(depthCamera.getPixelFormat()), cameraDescription + ":depth:raw").start();
             }
@@ -456,8 +504,6 @@ public class CameraNectar extends CameraRGBIRDepth {
         return detectedMarkers;
     }
 
-    
-    
     public synchronized String set(String key, String value) {
         return redisExternalGet.set(key, value);
     }
@@ -849,6 +895,5 @@ public class CameraNectar extends CameraRGBIRDepth {
     public synchronized List<String> brpop(int timeout, String key) {
         return redisExternalGet.brpop(timeout, key);
     }
-
 
 }

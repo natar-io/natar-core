@@ -17,14 +17,14 @@
  * Public License along with this library; If not, see
  * <http://www.gnu.org/licenses/>.
  */
-package tech.lity.rea.tracking;
+package tech.lity.rea.nectar.tracking;
 
-import tech.lity.rea.markers.MarkerSVGReader;
-import tech.lity.rea.markers.DetectedMarker;
-import tech.lity.rea.markers.MarkerList;
-import static tech.lity.rea.tracking.MarkerBoard.BLOCK_UPDATE;
-import static tech.lity.rea.tracking.MarkerBoard.FORCE_UPDATE;
-import static tech.lity.rea.tracking.MarkerBoard.NORMAL;
+import tech.lity.rea.nectar.markers.MarkerSVGReader;
+import tech.lity.rea.nectar.markers.DetectedMarker;
+import tech.lity.rea.nectar.markers.MarkerList;
+import static tech.lity.rea.nectar.tracking.MarkerBoard.BLOCK_UPDATE;
+import static tech.lity.rea.nectar.tracking.MarkerBoard.FORCE_UPDATE;
+import static tech.lity.rea.nectar.tracking.MarkerBoard.NORMAL;
 import tech.lity.rea.nectar.camera.Camera;
 import tech.lity.rea.nectar.camera.CameraNectar;
 import tech.lity.rea.nectar.camera.SubCamera;
@@ -49,17 +49,29 @@ public class MarkerBoardSvg extends MarkerBoard {
 //        trackers = new ArrayList<>();
         this.type = MarkerType.SVG;
 
-        // Read SVG from REDIS ?!
         try {
-            // TODO: better than getting the Papart object...
             XML xml;
             xml = new XML(new File(fileName));
-
             markersFromSVG = (new MarkerSVGReader(xml)).getList();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    
+    public MarkerBoardSvg(String name, MarkerList markers) {
+        super(name, 200, 200);
+        // Trackers not used
+//        trackers = new ArrayList<>();
+        this.type = MarkerType.SVG;
+        this.markersFromSVG = markers;
+    }
 
+    public MarkerList getMarkerList() {
+        return markersFromSVG;
+    }
+
+    public MarkerBoardSvg(String fileName) {
+        this(fileName, 200, 200);
     }
 
     @Override

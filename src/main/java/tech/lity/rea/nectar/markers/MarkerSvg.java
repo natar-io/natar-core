@@ -17,11 +17,14 @@
  * Public License along with this library; If not, see
  * <http://www.gnu.org/licenses/>.
  */
-package tech.lity.rea.markers;
+package tech.lity.rea.nectar.markers;
 
 import org.bytedeco.javacv.Marker;
 import processing.core.PMatrix2D;
 import processing.core.PVector;
+import processing.data.JSONArray;
+import processing.data.JSONObject;
+import tech.lity.rea.javacvprocessing.ProjectiveDeviceP;
 
 public class MarkerSvg implements Cloneable {
 
@@ -53,6 +56,32 @@ public class MarkerSvg implements Cloneable {
             corners[k++] = this.corners[i].y;
         }
         return new org.bytedeco.javacv.Marker(id, corners, 1.0);
+    }
+
+    public JSONObject toJSON() {
+        JSONObject output = new JSONObject();
+        JSONArray cornersJ = new JSONArray();
+        // 4 coners
+        for (int i = 0; i < 4; i++) {
+            JSONObject corner = new JSONObject();
+            corner.setFloat("x", corners[i].x);
+            corner.setFloat("y", corners[i].y);
+            cornersJ.append(corner);
+        }
+        output.setJSONArray("corners", cornersJ);
+        output.setJSONArray("matrix2D", ProjectiveDeviceP.PMatrix2DToJSON(matrix));
+        output.setInt("id", id);
+        output.setFloat("size", size.x);
+        return output;
+    }
+
+    public static MarkerSvg createFromJSON(JSONObject input) {
+
+        PMatrix2D matrix = ProjectiveDeviceP.JSONtoPMatrix2D(input.getJSONArray("matrix2D"));
+        int id = input.getInt("id");
+        float s = input.getInt("size");
+
+        return new MarkerSvg(id, matrix, new PVector(s, s));
     }
 
     public int getId() {

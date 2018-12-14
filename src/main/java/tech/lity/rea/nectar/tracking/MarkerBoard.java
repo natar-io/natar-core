@@ -17,7 +17,7 @@
  * Public License along with this library; If not, see
  * <http://www.gnu.org/licenses/>.
  */
-package tech.lity.rea.tracking;
+package tech.lity.rea.nectar.tracking;
 
 import tech.lity.rea.nectar.camera.Camera;
 import org.bytedeco.javacpp.ARToolKitPlus;
@@ -33,7 +33,7 @@ import processing.core.PVector;
  */
 public abstract class MarkerBoard {
 
-    protected final String fileName;
+    protected String fileName;
     protected float width;
     protected float height;
     protected ArrayList<Camera> cameras;
@@ -69,8 +69,7 @@ public abstract class MarkerBoard {
         this.fileName = "Invalid MarkerBoard";
     }
 
-    public MarkerBoard(String fileName, float width, float height) {
-        this.fileName = fileName;
+    public MarkerBoard(float width, float height) {
         this.width = width;
         this.height = height;
         cameras = new ArrayList<Camera>();
@@ -81,6 +80,11 @@ public abstract class MarkerBoard {
         lastDistance = new ArrayList<Float>();
         nextTimeEvent = new ArrayList<Integer>();
         updateStatus = new ArrayList<Integer>();
+    }
+    
+    public MarkerBoard(String fileName, float width, float height) {
+        this(width, height);
+        this.fileName = fileName;
     }
 
     protected abstract void addTrackerImpl(Camera camera);

@@ -27,7 +27,7 @@ import processing.core.PApplet;
 import processing.core.PImage;
 import processing.core.PMatrix3D;
 import processing.core.PVector;
-import tech.lity.rea.markers.DetectedMarker;
+import tech.lity.rea.nectar.markers.DetectedMarker;
 
 /**
  *
