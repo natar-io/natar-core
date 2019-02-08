@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>tech.lity.rea</groupId>
     <artifactId>nectar-core</artifactId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.1</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -33,7 +33,7 @@
                 <enabled>true</enabled>
             </snapshots>
         </repository>
-        
+    
         <repository>
             <id>public</id>
             <name>RealityTech public repository</name>
@@ -49,7 +49,7 @@
         <dependency>
             <groupId>tech.lity.rea</groupId>
             <artifactId>javacv-processing</artifactId>
-            <version>0.1-SNAPSHOT</version>
+            <version>0.1</version>
         </dependency>
         
         <dependency>
@@ -145,42 +145,5 @@
             </plugin>-->
         </plugins>
     </build>
-    <profiles>
-        <profile>
-            <id>windows_profile</id>
-            <activation>
-                <os>
-                    <family>Windows</family>
-                </os>
-            </activation>
-            <properties>
-                <os.type>windows</os.type>
-                <os.arch>amd64</os.arch>
-            </properties>
-        </profile>
-        <profile>
-            <id>linux_profile</id>
-            <activation>
-                <os>
-                    <family>Linux</family>
-                </os>
-            </activation>
-            <properties>
-                <os.type>linux</os.type>
-                <os.arch>amd64</os.arch>
-            </properties>
-        </profile>
-        <profile>
-            <id>osx_profile</id>
-            <activation>
-                <os>
-                    <family>mac</family>
-                </os>
-            </activation>
-            <properties>
-                <os.type>osx</os.type>
-                <os.arch>universal</os.arch>
-            </properties>
-        </profile>
-    </profiles>
+   
 </project>
