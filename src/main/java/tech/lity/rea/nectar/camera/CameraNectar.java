@@ -161,7 +161,8 @@ public class CameraNectar extends CameraRGBIRDepth {
             JSONObject calib2 = JSONObject.parse(this.get(cameraDescription + ":depth:calibration"));
             depthCamera.setCalibration(calib2);
         } catch (Exception e) {
-            System.out.println("cannot load camera and depth camear calibrations.");
+            System.out.println("cannot load camera and depth camera calibrations: " + e );
+            e.printStackTrace();
         }
     }
 
@@ -363,6 +364,7 @@ public class CameraNectar extends CameraRGBIRDepth {
                     byte[] id = key.getBytes();
                     client.subscribe(listener, id);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     System.out.println("Redis connection error: " + e);
                     System.out.println("Retrying to connect...");
                     client.close();

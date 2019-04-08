@@ -20,6 +20,21 @@ public class NectarGet {
 //        testCameraCalib();
     }
 
+    public static void loadCalibration(String file, String output, String type) {
+        Map<String, String> params = new HashMap<String, String>();
+        params.put("file", file);     // "data/calibration-AstraS-rgb.yaml");
+        params.put("output", output); // "camera0:calibration1");
+        params.put("type", type);     // "pd");
+
+        HttpRequest request = HttpRequest.get(server + "/nectar/load_configuration", params, true);
+        System.out.println("Req: "  + request.message() + " " + request.body() );
+    }
+    
+    public static void service(String name, String action){
+        HttpRequest request = HttpRequest.get(server + "/nectar/service/"+name+"/"+action); 
+        System.out.println("Service Req: " + request.message());
+    }
+
     public static void testCameraCalib() {
         // Load a calibration.
         Map<String, String> params = new HashMap<String, String>();

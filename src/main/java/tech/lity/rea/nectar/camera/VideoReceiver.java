@@ -13,7 +13,7 @@ import redis.clients.jedis.Jedis;
 
 /**
  *
- * @author ditrop
+ * @author Jeremy Laviole
  */
 public class VideoReceiver {
 
