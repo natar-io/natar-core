@@ -143,7 +143,12 @@ public class CameraNectar extends CameraRGBIRDepth {
         colorCamera.isConnected = true;
 
         // Load the calibration... 
-        JSONObject calib = JSONObject.parse(redis.get(cameraDescription + ":calibration"));
+        String calibration = redis.get(cameraDescription + ":calibration");
+        if (calibration == null) {
+            System.err.println("Could not find camera calibration at key `" + cameraDescription + ":calibration`.");
+            System.exit(-1);
+        }
+        JSONObject calib = JSONObject.parse(calibration);
         colorCamera.setCalibration(calib);
 
         if (!getMode) {
