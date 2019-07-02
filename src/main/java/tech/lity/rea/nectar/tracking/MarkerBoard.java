@@ -26,12 +26,13 @@ import java.util.ArrayList;
 import processing.core.PApplet;
 import processing.core.PMatrix3D;
 import processing.core.PVector;
+import tech.lity.rea.nectar.camera.TrackedObject;
 
 /**
  *
  * @author jeremylaviole
  */
-public abstract class MarkerBoard {
+public abstract class MarkerBoard implements TrackedObject {
 
     protected String fileName;
     protected float width;
@@ -58,7 +59,11 @@ public abstract class MarkerBoard {
 
     public enum MarkerType {
 
-        ARTOOLKITPLUS, JAVACV_FINDER, SVG, INVALID
+        ARTOOLKITPLUS, JAVACV_FINDER, SVG, SVG_NECTAR, INVALID
+    }
+
+    public String getName() {
+        return this.fileName;
     }
 
     public MarkerType getMarkerType() {
@@ -81,7 +86,7 @@ public abstract class MarkerBoard {
         nextTimeEvent = new ArrayList<Integer>();
         updateStatus = new ArrayList<Integer>();
     }
-    
+
     public MarkerBoard(String fileName, float width, float height) {
         this(width, height);
         this.fileName = fileName;
@@ -89,6 +94,7 @@ public abstract class MarkerBoard {
 
     protected abstract void addTrackerImpl(Camera camera);
 
+    @Override
     public void addTracker(PApplet applet, Camera camera) {
 //    public void addTracker(PApplet applet, Camera camera, ARToolKitPlus.TrackerMultiMarker tracker, float[] transfo) {
         this.applet = applet;
@@ -105,7 +111,7 @@ public abstract class MarkerBoard {
         addTrackerImpl(camera);
     }
 
-    private int getId(Camera camera) {
+    public int getId(Camera camera) {
         return cameras.indexOf(Camera.checkActingCamera(camera));
     }
 
@@ -215,40 +221,12 @@ public abstract class MarkerBoard {
         return cameras.contains(camera);
     }
 
-    private PVector getPositionVector(int id) {
+    public PVector getPositionVector(int id) {
         PMatrix3D transfo = (PMatrix3D) transfos.get(id);
         return new PVector(transfo.m03, transfo.m13, transfo.m23);
     }
 
-//    // We suppose that the ARDisplay is the one of the camera...
-//    public PVector getBoardLocation(Camera camera, ARDisplay display) {
-//        int id = getId(camera);
-//        PVector v = getPositionVector(id);
-//
-//        // Apply extrinsics if required.
-//        if (display.hasExtrinsics()) {
-//            PMatrix3D extr = display.getExtrinsics();
-//            PVector v2 = new PVector();
-//            extr.mult(v, v2);
-//            v = v2;
-//        }
-//
-//        PVector px = display.getProjectiveDeviceP().worldToPixel(v, true);
-//        return px;
-//    }
-//
-//    public boolean isSeenBy(Camera camera, ProjectorDisplay projector, float error) {
-//        PVector px = this.getBoardLocation(camera, projector);
-//        return !(px.x < (0 - error)
-//                || px.x > projector.getWidth()
-//                || px.y < (0 - error)
-//                || px.y > (projector.getHeight() + error));
-//    }
-//    
-//    
-
     public synchronized void updateLocation(Camera camera, IplImage img, Object globalTracking) {
-
         int id = getId(camera);
         if (id == -1) {
             throw new RuntimeException("The board " + this.fileName + " is"
@@ -268,9 +246,7 @@ public abstract class MarkerBoard {
         if (mode == BLOCK_UPDATE && currentTime < endTime) {
             return;
         }
-
         updatePositionImpl(id, currentTime, endTime, mode, camera, img, globalTracking);
-
     }
 
     protected abstract void updatePositionImpl(int id, int currentTime, int endTime, int mode, Camera camera, IplImage img, Object globalTracking);
@@ -302,15 +278,17 @@ public abstract class MarkerBoard {
     }
 
     public boolean useMarkers() {
-        return this.type == MarkerType.ARTOOLKITPLUS || this.type == MarkerType.SVG;
+        return this.type == MarkerType.ARTOOLKITPLUS ||
+                this.type == MarkerType.SVG_NECTAR ||
+                this.type == MarkerType.SVG;
     }
 
     public boolean useGrayImages() {
-        return this.type == MarkerType.ARTOOLKITPLUS || this.type == MarkerType.SVG;
+        return this.type == MarkerType.ARTOOLKITPLUS ||  this.type == MarkerType.SVG_NECTAR || this.type == MarkerType.SVG;
     }
 
     public boolean useCustomARToolkitBoard() {
-        return this.type == MarkerType.SVG;
+        return this.type == MarkerType.SVG ||  this.type == MarkerType.SVG_NECTAR;
     }
 
     public String getFileName() {

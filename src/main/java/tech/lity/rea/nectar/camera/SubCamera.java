@@ -44,6 +44,13 @@ public class SubCamera extends Camera {
     public Camera getMainCamera() {
         return mainCamera;
     }
+    
+    public Type getType(){
+        return this.type;
+    }
+    public void setType(Type t){
+        this.type = t;
+    }
 
     @Override
     public void start() {
@@ -75,7 +82,7 @@ public class SubCamera extends Camera {
         mainCamera.setThread(this);
         
         if (thread == null) {
-            thread = new CameraThread(this);
+            thread = new CameraGrabberThread(this);
 //            thread.setCompute(this.trackSheets);
             thread.start();
         } else {

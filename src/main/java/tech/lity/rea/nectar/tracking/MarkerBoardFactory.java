@@ -22,9 +22,6 @@ package tech.lity.rea.nectar.tracking;
 import tech.lity.rea.nectar.tracking.MarkerBoard.MarkerType;
 import java.util.ArrayList;
 import java.util.HashMap;
-import tech.lity.rea.nectar.tracking.MarkerBoard;
-import tech.lity.rea.nectar.tracking.MarkerBoardInvalid;
-import tech.lity.rea.nectar.tracking.MarkerBoardSvg;
 
 /**
  *
@@ -33,15 +30,30 @@ import tech.lity.rea.nectar.tracking.MarkerBoardSvg;
 public class MarkerBoardFactory {
 
     private static final HashMap<String, MarkerBoard> allBoards = new HashMap<>();
-public static final int DEFAULT_WIDTH = 100, DEFAULT_HEIGHT = 100;
-    
+    public static final int DEFAULT_WIDTH = 100, DEFAULT_HEIGHT = 100;
+
+    /**
+     * Not Dot in filename: load from redis
+     *
+     * @param fileName
+     * @param width
+     * @param height
+     * @return
+     */
     public static MarkerBoard create(String fileName) {
-            return MarkerBoardFactory.create(fileName, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        return create(fileName, DEFAULT_WIDTH, DEFAULT_HEIGHT);
     }
 
-    // Todo: error Handling...
+    /**
+     * Not Dot in filename: load from redis
+     *
+     * @param fileName
+     * @param width
+     * @param height
+     * @return
+     */
     public static MarkerBoard create(String fileName, float width, float height) {
-
+        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!...");
         if (allBoards.containsKey(fileName)) {
             return allBoards.get(fileName);
         }
@@ -57,10 +69,14 @@ public static final int DEFAULT_WIDTH = 100, DEFAULT_HEIGHT = 100;
                 output = new MarkerBoardJavaCV(fileName, width, height);
             }
 
+            if (type == MarkerType.SVG_NECTAR) {
+                System.out.println("Loading Natar markerboard (2)...");
+                output = new MarkerBoardSvgNectar(fileName);
+            }
             if (type == MarkerType.SVG) {
                 output = new MarkerBoardSvg(fileName, width, height);
             }
-            if(output == MarkerBoardInvalid.board){
+            if (output == MarkerBoardInvalid.board) {
                 throw new Exception("Impossible to load the markerboard :" + fileName);
             }
             allBoards.put(fileName, output);
@@ -71,15 +87,28 @@ public static final int DEFAULT_WIDTH = 100, DEFAULT_HEIGHT = 100;
         return output;
     }
 
+    /**
+     * No DOT: Load from REDIS
+     *
+     * @param name
+     * @return
+     */
     private static MarkerType getType(String name) {
-        if (name.endsWith("cfg")) {
-            return MarkerType.ARTOOLKITPLUS;
-        }
-        if (name.endsWith("svg")) {
-            return MarkerType.SVG;
-        }
-        if (name.endsWith("png") || name.endsWith("jpg") || name.endsWith("bmp")) {
-            return MarkerType.JAVACV_FINDER;
+
+        // Load board from file system if contains a '.' (dot) !
+        if (name.contains(".")) {
+            if (name.endsWith("cfg")) {
+                return MarkerType.ARTOOLKITPLUS;
+            }
+            if (name.endsWith("svg")) {
+                return MarkerType.SVG;
+            }
+            if (name.endsWith("png") || name.endsWith("jpg") || name.endsWith("bmp")) {
+                return MarkerType.JAVACV_FINDER;
+            }
+        } else {
+            System.out.println("Loading Natar markerboard...");
+            return MarkerType.SVG_NECTAR;
         }
         return MarkerType.INVALID;
     }

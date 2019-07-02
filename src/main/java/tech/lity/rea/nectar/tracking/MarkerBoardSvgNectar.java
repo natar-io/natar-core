@@ -29,6 +29,8 @@ import processing.core.PMatrix3D;
 import processing.core.PVector;
 import processing.data.JSONArray;
 import processing.data.XML;
+import tech.lity.rea.nectar.camera.RedisClient;
+import tech.lity.rea.nectar.camera.RedisClientImpl;
 import tech.lity.rea.nectar.markers.MarkerSVGReader;
 import tech.lity.rea.nectar.tracking.MarkerBoard;
 import tech.lity.rea.nectar.tracking.MarkerBoardSvg;
@@ -39,26 +41,24 @@ import tech.lity.rea.nectar.tracking.MarkerBoardSvg;
  */
 public class MarkerBoardSvgNectar extends MarkerBoard {
 
-    private  MarkerList markersFromSVG;
+    private MarkerList markersFromSVG;
 
-    public MarkerBoardSvgNectar(String name, CameraNectar cam) {
+    public MarkerBoardSvgNectar(String name) {
         super(200, 200);
         this.fileName = name;
         this.type = MarkerType.SVG;
 
-        // JSON !   -> Inversion somewhere. «
-//        JSONArray markersJson = JSONArray.parse(cam.get("markerboards:" + name));
-//        markersFromSVG = MarkerList.createFromJSON(markersJson);
+        load(RedisClientImpl.getMainConnection());
+    }
 
-        // SVG !!
+    public void load(RedisClient client) {
         try {
-            String xmlText = cam.get("markerboards:" + name);
+            String xmlText = client.createConnection().get("markerboards:" + fileName);
             XML xml = XML.parse(xmlText);
             markersFromSVG = (new MarkerSVGReader(xml)).getList();
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     @Override

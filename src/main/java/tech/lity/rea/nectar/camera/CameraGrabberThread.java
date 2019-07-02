@@ -23,20 +23,25 @@ package tech.lity.rea.nectar.camera;
  *
  * @author jeremylaviole
  */
-public class CameraThread extends Thread {
+public class CameraGrabberThread extends Thread {
 
-    private final Camera camera;
+    protected final Camera camera;
     Camera cameraForMarkerboard;
     private boolean compute;
 
     public boolean stop;
 
-    public CameraThread(Camera camera) {
+    public CameraGrabberThread(Camera camera) {
         this.camera = camera;
         stop = false;
         cameraForMarkerboard = camera;
     }
 
+    // Grabber does not compute anything.
+    public void setCompute(boolean c){
+        
+    }
+    
     @Override
     public void run() {
         while (!stop) {

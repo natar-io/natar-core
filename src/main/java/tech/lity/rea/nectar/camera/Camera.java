@@ -23,17 +23,12 @@ package tech.lity.rea.nectar.camera;
  *
  * @author jeremylaviole
  */
-import org.bytedeco.javacpp.opencv_core.CvMat;
 import org.bytedeco.javacpp.opencv_core.IplImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Observable;
 import java.util.concurrent.Semaphore;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import org.bytedeco.javacv.ProjectiveDevice;
-
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PImage;
@@ -120,7 +115,7 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
 
     // ARToolkit 
     protected String calibrationARToolkit;
-    protected CameraThread thread = null;
+    protected CameraGrabberThread thread = null;
 
     public String getCameraDescription() {
         return cameraDescription;
@@ -183,7 +178,7 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
 
     public abstract PImage getPImage();
 
-    void setMarkers(DetectedMarker[] detectedMarkers) {
+    public void setMarkers(DetectedMarker[] detectedMarkers) {
         this.lastMarkers = detectedMarkers;
     }
 
@@ -285,6 +280,74 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
         return out;
     }
 
+    private Object touchInput = null;
+
+    public void setTouchInput(Object touchInput) {
+        this.touchInput = touchInput;
+    }
+
+    public Object getTouchInput() {
+        return touchInput;
+    }
+
+    private final List<TrackedObject> sheets = Collections.synchronizedList(new ArrayList<TrackedObject>());
+
+    public Semaphore getSheetSemaphore() {
+        return sheetsSemaphore;
+    }
+
+    /**
+     * Add a markerboard to track with this camera.
+     *
+     * @param sheet
+     */
+    public void track(TrackedObject sheet) {
+
+        System.out.println("Tracking a new sheet: " + sheet.getName());
+
+        sheet.addTracker(parent, checkActingCamera(this));
+        try {
+            getSheetSemaphore().acquire();
+            this.sheets.add(sheet);
+            getSheetSemaphore().release();
+        } catch (InterruptedException ex) {
+            System.out.println("Interrupted !");
+        } catch (NullPointerException e) {
+            throw new RuntimeException("Marker detection not initialized. " + e);
+        }
+    }
+
+    /**
+     * Add a markerboard to track with this camera.
+     *
+     * @param sheet
+     */
+    @Deprecated
+    public void trackMarkerBoard(TrackedObject sheet) {
+        track(sheet);
+    }
+
+    /**
+     * If the video is threaded, this sets if the tracking is on or not.
+     *
+     * @param auto automatic Tag detection: ON if true.
+     */
+    public void trackSheets(boolean auto) {
+        this.trackSheets = auto;
+
+        if (thread != null) {
+            thread.setCompute(auto);
+        }
+    }
+
+    public boolean tracks(TrackedObject board) {
+        return this.sheets.contains(board);
+    }
+
+    public List<TrackedObject> getTrackedSheets() {
+        return this.sheets;
+    }
+
     /**
      * Description of the camera, the number if using OpenCV or OpenKinect, and
      * a name or file if using Processing.
@@ -358,10 +421,6 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
         return calibrationARToolkit;
     }
 
-    protected Semaphore getSheetSemaphore() {
-        return sheetsSemaphore;
-    }
-
 //    
 //    // This moves in Markerboard! 
 //    private final List<MarkerBoard> sheets = Collections.synchronizedList(new ArrayList<MarkerBoard>());
@@ -415,12 +474,20 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
      */
     public void setThread() {
         if (thread == null) {
-            thread = new CameraThread(this);
+            thread = new CameraGrabberThread(this);
 //            thread.setCompute(this.trackSheets);
             thread.start();
         } else {
             System.err.println("Camera: Error Thread already launched");
         }
+    }
+
+    /**
+     * It makes the camera update continuously.
+     */
+    public void setThread(CameraGrabberThread t) {
+        thread = t;
+        thread.start();
     }
 
     /**
@@ -453,7 +520,7 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
      *
      * @param img
      */
-    protected void updateCurrentImage(IplImage img) {
+    public void updateCurrentImage(IplImage img) {
 
         if (parent != null) {
             this.timeStamp = parent.millis();

@@ -244,7 +244,7 @@ public abstract class CameraRGBIRDepth extends Camera {
     }
 
     @Override
-    void setMarkers(DetectedMarker[] detectedMarkers) {
+    public void setMarkers(DetectedMarker[] detectedMarkers) {
         actAsCamera.setMarkers(detectedMarkers);
     }
 
@@ -354,7 +354,7 @@ public abstract class CameraRGBIRDepth extends Camera {
     }
 
     @Override
-    protected Semaphore getSheetSemaphore() {
+    public Semaphore getSheetSemaphore() {
         return actAsCamera.getSheetSemaphore();
     }
 
@@ -365,7 +365,7 @@ public abstract class CameraRGBIRDepth extends Camera {
      */
     void setThread(SubCamera subCam) {
         if (thread == null) {
-            thread = new CameraThread(this);
+            thread = new CameraGrabberThread(this);
 //            thread.setCompute(subCam.trackSheets);
             subCam.thread = thread;
 
@@ -383,7 +383,7 @@ public abstract class CameraRGBIRDepth extends Camera {
     @Override
     public void setThread() {
         if (thread == null) {
-            thread = new CameraThread(this);
+            thread = new CameraGrabberThread(this);
             if (this.actAsCamera != null) {
 //                thread.setCompute(actAsCamera.trackSheets);
                 actAsCamera.thread = thread;
@@ -413,7 +413,7 @@ public abstract class CameraRGBIRDepth extends Camera {
     }
 
     @Override
-    protected void updateCurrentImage(opencv_core.IplImage img) {
+    public void updateCurrentImage(opencv_core.IplImage img) {
         actAsCamera.updateCurrentImage(img);
     }
 

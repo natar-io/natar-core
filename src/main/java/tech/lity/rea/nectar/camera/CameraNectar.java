@@ -57,8 +57,14 @@ public class CameraNectar extends CameraRGBIRDepth {
     private Jedis redisGet;
     private Jedis redisExternalGet;
 
+    protected final RedisClientImpl RedisClientGenerator = new RedisClientImpl();
+
     public CameraNectar(String cameraName) {
         this.cameraDescription = cameraName;
+    }
+    
+    public String getCameraKey(){
+        return this.cameraDescription;
     }
 
     /**
@@ -186,13 +192,6 @@ public class CameraNectar extends CameraRGBIRDepth {
         depthCamera.setExtrinsics(extr);
     }
 
-    /**
-     * Create a new connection. 
-     * @return 
-     */
-    public Jedis createConnection() {
-        return new Jedis(DEFAULT_REDIS_HOST, DEFAULT_REDIS_PORT);
-    }
 
     private void startDepth() {
         Jedis redis2 = new Jedis(DEFAULT_REDIS_HOST, DEFAULT_REDIS_PORT);
@@ -399,7 +398,7 @@ public class CameraNectar extends CameraRGBIRDepth {
         @Override
         public void onMessage(byte[] channel, byte[] message) {
             try {
-                getConnection = checkConnection(getConnection);
+               getConnection = checkConnection(getConnection);
                 if (this.format == PixelFormat.BGR || this.format == PixelFormat.RGB) {
                     byte[] data = getConnection.get(channel);
                     setColorImage(data);
@@ -510,6 +509,32 @@ public class CameraNectar extends CameraRGBIRDepth {
         }
         return detectedMarkers;
     }
+    
+     
+    public Jedis createConnection() {
+        return RedisClientGenerator.createConnection();
+    }
+
+    public String getRedisHost() {
+        return RedisClientGenerator.getRedisHost();
+    }
+
+    public void setRedisHost(String redisHost) {
+        RedisClientGenerator.setRedisHost(redisHost);
+    }
+
+    public void setRedisAuth(String redisAuth) {
+        RedisClientGenerator.setRedisAuth(redisAuth);
+    }
+
+    public int getRedisPort() {
+        return RedisClientGenerator.getRedisPort();
+    }
+
+    public void setRedisPort(int redisPort) {
+        RedisClientGenerator.setRedisPort(redisPort);
+    }
+
 
     public synchronized String set(String key, String value) {
         return redisExternalGet.set(key, value);

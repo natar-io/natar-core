@@ -26,6 +26,8 @@ import org.xml.sax.SAXException;
 import processing.core.PApplet;
 import processing.core.PMatrix3D;
 import processing.core.PVector;
+import processing.data.JSONArray;
+import processing.data.JSONObject;
 import processing.data.XML;
 import toxi.geom.Matrix4x4;
 import toxi.geom.ReadonlyVec3D;
@@ -39,7 +41,7 @@ public class HomographyCalibration extends Calibration {
 
     public static final String HOMOGRAPHY_XML_NAME = "Homography";
     public static final HomographyCalibration INVALID = new HomographyCalibration();
-    
+
     protected Matrix4x4 mat;
     protected PMatrix3D pmatrix;
     protected PMatrix3D invPmatrix;
@@ -159,6 +161,30 @@ public class HomographyCalibration extends Calibration {
         initMat();
     }
 
+    public void loadFromJSONString(String data) throws IOException, SAXException, ParserConfigurationException {
+        JSONObject root = JSONObject.parse(data);
+        JSONArray matrix = root.getJSONArray("matrix");
+
+        pmatrix = new PMatrix3D();
+        pmatrix.m00 = matrix.getFloat(0);
+        pmatrix.m01 = matrix.getFloat(1);
+        pmatrix.m02 = matrix.getFloat(2);
+        pmatrix.m03 = matrix.getFloat(3);
+        pmatrix.m10 = matrix.getFloat(4);
+        pmatrix.m11 = matrix.getFloat(5);
+        pmatrix.m12 = matrix.getFloat(6);
+        pmatrix.m13 = matrix.getFloat(7);
+        pmatrix.m20 = matrix.getFloat(8);
+        pmatrix.m21 = matrix.getFloat(9);
+        pmatrix.m22 = matrix.getFloat(10);
+        pmatrix.m23 = matrix.getFloat(11);
+        pmatrix.m30 = matrix.getFloat(12);
+        pmatrix.m31 = matrix.getFloat(13);
+        pmatrix.m32 = matrix.getFloat(14);
+        pmatrix.m33 = matrix.getFloat(15);
+        initMat();
+    }
+
     @Override
     public boolean isValid() {
         return this.pmatrix != null;
@@ -193,9 +219,22 @@ public class HomographyCalibration extends Calibration {
         hc.loadFrom(applet, fileName);
         return hc.getHomography();
     }
+
     public static PMatrix3D getMatFrom(String fileName) throws IOException, ParserConfigurationException, SAXException {
         HomographyCalibration hc = new HomographyCalibration();
         hc.loadFrom(fileName);
+        return hc.getHomography();
+    }
+
+    public static PMatrix3D getMatFromData(String data) {
+        HomographyCalibration hc = new HomographyCalibration();
+        try {
+            hc.loadFromJSONString(data);
+        } catch (Exception e) {
+            System.out.println("Cannot read the homograpy: ");
+            System.out.println(data);
+            e.printStackTrace();
+        }
         return hc.getHomography();
     }
 
