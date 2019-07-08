@@ -21,6 +21,8 @@ package tech.lity.rea.nectar.calibration;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.xml.parsers.ParserConfigurationException;
 import org.xml.sax.SAXException;
 import processing.core.PApplet;
@@ -138,30 +140,38 @@ public class HomographyCalibration extends Calibration {
         initMat();
     }
 
-    public void loadFrom(String fileName) throws IOException, ParserConfigurationException, SAXException {
-        XML root = new XML(new File(fileName));
-        XML homographyNode = root.getChild(HOMOGRAPHY_XML_NAME);
-        pmatrix = new PMatrix3D();
-        pmatrix.m00 = homographyNode.getFloat("m00");
-        pmatrix.m01 = homographyNode.getFloat("m01");
-        pmatrix.m02 = homographyNode.getFloat("m02");
-        pmatrix.m03 = homographyNode.getFloat("m03");
-        pmatrix.m10 = homographyNode.getFloat("m10");
-        pmatrix.m11 = homographyNode.getFloat("m11");
-        pmatrix.m12 = homographyNode.getFloat("m12");
-        pmatrix.m13 = homographyNode.getFloat("m13");
-        pmatrix.m20 = homographyNode.getFloat("m20");
-        pmatrix.m21 = homographyNode.getFloat("m21");
-        pmatrix.m22 = homographyNode.getFloat("m22");
-        pmatrix.m23 = homographyNode.getFloat("m23");
-        pmatrix.m30 = homographyNode.getFloat("m30");
-        pmatrix.m31 = homographyNode.getFloat("m31");
-        pmatrix.m32 = homographyNode.getFloat("m32");
-        pmatrix.m33 = homographyNode.getFloat("m33");
-        initMat();
+    public void loadFrom(String fileName) {
+        try {
+            XML root = new XML(new File(fileName));
+            XML homographyNode = root.getChild(HOMOGRAPHY_XML_NAME);
+            pmatrix = new PMatrix3D();
+            pmatrix.m00 = homographyNode.getFloat("m00");
+            pmatrix.m01 = homographyNode.getFloat("m01");
+            pmatrix.m02 = homographyNode.getFloat("m02");
+            pmatrix.m03 = homographyNode.getFloat("m03");
+            pmatrix.m10 = homographyNode.getFloat("m10");
+            pmatrix.m11 = homographyNode.getFloat("m11");
+            pmatrix.m12 = homographyNode.getFloat("m12");
+            pmatrix.m13 = homographyNode.getFloat("m13");
+            pmatrix.m20 = homographyNode.getFloat("m20");
+            pmatrix.m21 = homographyNode.getFloat("m21");
+            pmatrix.m22 = homographyNode.getFloat("m22");
+            pmatrix.m23 = homographyNode.getFloat("m23");
+            pmatrix.m30 = homographyNode.getFloat("m30");
+            pmatrix.m31 = homographyNode.getFloat("m31");
+            pmatrix.m32 = homographyNode.getFloat("m32");
+            pmatrix.m33 = homographyNode.getFloat("m33");
+            initMat();
+        } catch (IOException ex) {
+            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ParserConfigurationException ex) {
+            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SAXException ex) {
+            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
-    public void loadFromJSONString(String data) throws IOException, SAXException, ParserConfigurationException {
+    public void loadFromJSONString(String data) {
         JSONObject root = JSONObject.parse(data);
         JSONArray matrix = root.getJSONArray("matrix");
 
@@ -183,6 +193,31 @@ public class HomographyCalibration extends Calibration {
         pmatrix.m32 = matrix.getFloat(14);
         pmatrix.m33 = matrix.getFloat(15);
         initMat();
+    }
+
+    public String exportToJSONString() {
+        JSONObject root = new JSONObject();
+        JSONArray matrix = new JSONArray();
+
+        matrix.append(pmatrix.m00);
+        matrix.append(pmatrix.m01);
+        matrix.append(pmatrix.m02);
+        matrix.append(pmatrix.m03);
+        matrix.append(pmatrix.m10);
+        matrix.append(pmatrix.m11);
+        matrix.append(pmatrix.m12);
+        matrix.append(pmatrix.m13);
+        matrix.append(pmatrix.m20);
+        matrix.append(pmatrix.m21);
+        matrix.append(pmatrix.m22);
+        matrix.append(pmatrix.m23);
+        matrix.append(pmatrix.m30);
+        matrix.append(pmatrix.m31);
+        matrix.append(pmatrix.m32);
+        matrix.append(pmatrix.m33);
+        root.setJSONArray("matrix", matrix);
+
+        return root.toString();
     }
 
     @Override
@@ -235,6 +270,12 @@ public class HomographyCalibration extends Calibration {
             System.out.println(data);
             e.printStackTrace();
         }
+        return hc.getHomography();
+    }
+
+    public static PMatrix3D CreateMatrixFrom(String data) {
+        HomographyCalibration hc = new HomographyCalibration();
+        hc.loadFromJSONString(data);
         return hc.getHomography();
     }
 

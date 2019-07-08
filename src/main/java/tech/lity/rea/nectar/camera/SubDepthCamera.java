@@ -24,27 +24,50 @@ import org.bytedeco.javacpp.opencv_core;
  *
  * @author Jeremy Laviole
  */
-public class SubDepthCamera extends SubCamera{
-    
+public class SubDepthCamera extends SubCamera implements WithTouchInput {
 
+    private LockedUpdater touchInput = null;
+
+    
     public SubDepthCamera(CameraRGBIRDepth mainCamera) {
         super(mainCamera);
     }
-    
+
     public SubDepthCamera(CameraRGBIRDepth mainCamera, Type type) {
         super(mainCamera, type);
     }
- 
 
+    
+     @Override
     public void newTouchImageWithColor(opencv_core.IplImage colorImage) {
-//            touchInput.lock();
-//            touchInput.update();
-//            touchInput.getTouch2DColors(colorImage);
-//            touchInput.unlock();
+        if (touchInput != null) {
+            touchInput.lock();
+            touchInput.update();
+            touchInput.updateColors(colorImage);
+            touchInput.unlock();
+        } else if (touchInput != null) {
+            System.err.println("Error, the TouchInput is set, but no DepthImg is grabbed.");
+        }
     }
+    @Override
     public void newTouchImage() {
-//            touchInput.lock();
-//            touchInput.update();
-//            touchInput.unlock();
+        if (touchInput != null) {
+            touchInput.lock();
+            touchInput.update();
+            touchInput.unlock();
+        } else if (touchInput != null) {
+            System.err.println("Error, the TouchInput is set, but no DepthImg is grabbed.");
+        }
     }
+
+    @Override
+    public void setTouchInput(LockedUpdater touchInput) {
+        this.touchInput = touchInput;
+    }
+
+    @Override
+    public LockedUpdater getTouchInput() {
+        return touchInput;
+    }
+
 }

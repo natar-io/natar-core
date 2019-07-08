@@ -33,7 +33,7 @@ import tech.lity.rea.nectar.markers.DetectedMarker;
  *
  * @author Jeremy Laviole
  */
-public abstract class CameraRGBIRDepth extends Camera {
+public abstract class CameraRGBIRDepth extends Camera{
 
     protected SubDepthCamera depthCamera;
     protected SubCamera colorCamera;

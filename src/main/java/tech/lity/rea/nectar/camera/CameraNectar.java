@@ -19,29 +19,16 @@
  */
 package tech.lity.rea.nectar.camera;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.bytedeco.javacpp.opencv_core;
 import static org.bytedeco.javacpp.opencv_core.IPL_DEPTH_8U;
-import processing.core.PImage;
 import processing.core.PMatrix3D;
 import processing.data.JSONArray;
 import processing.data.JSONObject;
-import redis.clients.jedis.BinaryClient;
 import redis.clients.jedis.BinaryJedisPubSub;
-import redis.clients.jedis.BitOP;
-import redis.clients.jedis.BitPosParams;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.ScanParams;
-import redis.clients.jedis.ScanResult;
-import redis.clients.jedis.SortingParams;
-import redis.clients.jedis.ZParams;
-import redis.clients.jedis.params.sortedset.ZAddParams;
-import redis.clients.jedis.params.sortedset.ZIncrByParams;
 import tech.lity.rea.javacvprocessing.ProjectiveDeviceP;
+import tech.lity.rea.nectar.calibration.HomographyCalibration;
 import tech.lity.rea.nectar.markers.DetectedMarker;
-import tech.lity.rea.nectar.tracking.MarkerBoard;
 
 /**
  *
@@ -55,15 +42,22 @@ public class CameraNectar extends CameraRGBIRDepth {
     public int DEFAULT_REDIS_PORT = 6379;
     private DetectedMarker[] currentMarkers;
     private Jedis redisGet;
-    private Jedis redisExternalGet;
 
-    protected final RedisClientImpl RedisClientGenerator = new RedisClientImpl();
+    protected RedisClient redisClientGenerator = new RedisClientImpl();
 
     public CameraNectar(String cameraName) {
         this.cameraDescription = cameraName;
     }
-    
-    public String getCameraKey(){
+
+    public RedisClient getRedisClient() {
+        return this.redisClientGenerator;
+    }
+
+    public void setRedisClient(RedisClient client) {
+        this.redisClientGenerator = client;
+    }
+
+    public String getCameraKey() {
         return this.cameraDescription;
     }
 
@@ -71,18 +65,19 @@ public class CameraNectar extends CameraRGBIRDepth {
      * Update the calibration from Nectar.
      */
     public boolean updateCalibration() {
+        Jedis connection = createConnection();
         boolean set = false;
         if (useColor) {
             String key = this.cameraDescription + ":calibration";
-            if (this.exists(key)) {
-                this.colorCamera.setCalibration(JSONObject.parse(this.get(key)));
+            if (connection.exists(key)) {
+                this.colorCamera.setCalibration(JSONObject.parse(connection.get(key)));
                 set = true;
             }
         }
         if (useDepth) {
             String key = this.cameraDescription + ":depth:calibration";
-            if (this.exists(key)) {
-                this.depthCamera.setCalibration(JSONObject.parse(this.get(key)));
+            if (connection.exists(key)) {
+                this.depthCamera.setCalibration(JSONObject.parse(connection.get(key)));
                 set = false;
             }
         }
@@ -92,10 +87,10 @@ public class CameraNectar extends CameraRGBIRDepth {
     public PMatrix3D getLocation(String key) {
         String keyTotal = this.getCameraDescription() + ":" + key;
         PMatrix3D table = new PMatrix3D();
-        if (this.exists(keyTotal)) {
+        if (redisGet.exists(keyTotal)) {
             table = ProjectiveDeviceP.JSONtoPMatrix(
                     JSONArray.parse(
-                            this.get(
+                            redisGet.get(
                                     this.getCameraDescription() + ":table")));
         }
         return table;
@@ -109,7 +104,6 @@ public class CameraNectar extends CameraRGBIRDepth {
     public void start() {
         try {
             redisGet = createConnection();
-            redisExternalGet = createConnection();
             if (useColor) {
                 startRGB();
                 startMarkerTracking();
@@ -122,7 +116,7 @@ public class CameraNectar extends CameraRGBIRDepth {
             this.isConnected = true;
         } catch (NumberFormatException e) {
             System.err.println("Could not start Nectar camera: " + cameraDescription + ". " + e);
-            System.err.println("Maybe the input key is not correct.");
+            System.err.println("Maybe the input key is not correct, check width/height and calibration.");
             System.exit(-1);
         } catch (Exception e) {
             System.err.println("Could not start Nectar camera: " + cameraDescription + ". " + e);
@@ -165,33 +159,69 @@ public class CameraNectar extends CameraRGBIRDepth {
     /**
      * Fetch the calibrations(intrinsics) from Redis / Nectar.
      */
-    public void updateCalibrations() {
+    public void loadCalibrations() {
+        redisGet = createConnection();
         try {
-            JSONObject calib = JSONObject.parse(this.get(cameraDescription + ":calibration"));
+            JSONObject calib = JSONObject.parse(redisGet.get(cameraDescription + ":calibration"));
             colorCamera.setCalibration(calib);
-            JSONObject calib2 = JSONObject.parse(this.get(cameraDescription + ":depth:calibration"));
+        } catch (Exception e) {
+            System.out.println("cannot load camera (" + cameraDescription + ") calibration: " + e);
+            e.printStackTrace();
+        }
+        try {
+            JSONObject calib2 = JSONObject.parse(redisGet.get(cameraDescription + ":depth:calibration"));
             depthCamera.setCalibration(calib2);
         } catch (Exception e) {
-            System.out.println("cannot load camera and depth camera calibrations: " + e );
+            System.out.println("cannot load depth camera  (" + cameraDescription + ") calibrations: " + e);
             e.printStackTrace();
         }
     }
 
     /**
      * Fetch the extrinsics (color-depth) from Redis / Nectar.
-     * @param connection optionnal can be null
      */
-    public void updateExtrinsics(Jedis connection) {
-        PMatrix3D extr;
-        if (connection != null) {
-            extr = ProjectiveDeviceP.JSONtoPMatrix(JSONArray.parse(connection.get(cameraDescription + ":extrinsics:depth")));
-        } else {
-            extr = ProjectiveDeviceP.JSONtoPMatrix(JSONArray.parse(this.get(cameraDescription + ":extrinsics:depth")));
-        }
-        // set extrinsics...
+    public void loadStereoExtrinsics() {
+        Jedis connection = redisClientGenerator.createConnection();
+        String data = connection.get(cameraDescription + ":extrinsics:depth");
+        PMatrix3D extr = HomographyCalibration.CreateMatrixFrom(data);
         depthCamera.setExtrinsics(extr);
     }
 
+    /**
+     * Fetch the extrinsics (color-depth) from Redis / Nectar.
+     *
+     * @param key
+     */
+    public void loadExtrinsics(String key) {
+        Jedis connection = redisClientGenerator.createConnection();
+        String data = connection.get(cameraDescription + ":extrinsics:" + key);
+        PMatrix3D extr = HomographyCalibration.CreateMatrixFrom(data);
+        this.setExtrinsics(extr);
+    }
+
+    /**
+     * Fetch the extrinsics (color-depth) from Redis / Nectar.
+     *
+     * @param key
+     */
+    public void saveExtrinsics(String key) {
+        PMatrix3D extr = this.getExtrinsics();
+        HomographyCalibration hc = new HomographyCalibration();
+        hc.setMatrix(extr);
+        hc.saveToXML(redisClientGenerator, this.getCameraDescription() + ":extrinsics:" + key);
+    }
+
+    public void setTableLocation(PMatrix3D tableCenter) {
+        HomographyCalibration hc = new HomographyCalibration();
+        hc.setMatrix(tableCenter);
+        hc.saveToXML(redisClientGenerator, this.getCameraDescription() + ":table");
+    }
+
+    public PMatrix3D loadTableLocation() {
+        Jedis connection = redisClientGenerator.createConnection();
+        String data = connection.get(cameraDescription + ":table");
+        return HomographyCalibration.CreateMatrixFrom(data);
+    }
 
     private void startDepth() {
         Jedis redis2 = new Jedis(DEFAULT_REDIS_HOST, DEFAULT_REDIS_PORT);
@@ -208,14 +238,13 @@ public class CameraNectar extends CameraRGBIRDepth {
             // TODO: Standard Depth format
             depthCamera.setPixelFormat(PixelFormat.OPENNI_2_DEPTH);
 
-            updateExtrinsics(redis2);
+            loadStereoExtrinsics();
 
             try {
-                // set extrinsics...
-                PMatrix3D extr = ProjectiveDeviceP.JSONtoPMatrix(JSONArray.parse(redis2.get(cameraDescription + ":extrinsics:depth")));
-                depthCamera.setExtrinsics(extr);
+                loadStereoExtrinsics();
             } catch (Exception e) {
                 System.out.println("Could not load extrinsics: " + e);
+                e.printStackTrace();
             }
             if (!getMode) {
                 new RedisThread(redis2, new ImageListener(depthCamera.getPixelFormat()), cameraDescription + ":depth:raw").start();
@@ -286,6 +315,7 @@ public class CameraNectar extends CameraRGBIRDepth {
     private opencv_core.IplImage rawVideoImage = null;
     private opencv_core.IplImage rawDepthImage = null;
 
+    // Note: Must work with 1 channel ?!
     protected void setColorImage(byte[] message) {
         int channels = 3;
         if (rawVideoImage == null || rawVideoImage.width() != colorCamera.width || rawVideoImage.height() != colorCamera.height) {
@@ -314,15 +344,15 @@ public class CameraNectar extends CameraRGBIRDepth {
 
         // TODO: Send Touch Event ?
         if (getActingCamera() == IRCamera) {
-//            ((WithTouchInput) depthCamera).newTouchImageWithColor(IRCamera.currentImage);
+            ((WithTouchInput) depthCamera).newTouchImageWithColor(IRCamera.currentImage);
             return;
         }
         if (getActingCamera() == colorCamera || useColor && colorCamera.currentImage != null) {
-//            ((WithTouchInput) depthCamera).newTouchImageWithColor(colorCamera.currentImage);
+            ((WithTouchInput) depthCamera).newTouchImageWithColor(colorCamera.currentImage);
             return;
         }
-//        ((WithTouchInput) depthCamera).newTouchImage();
 
+        ((WithTouchInput) depthCamera).newTouchImage();
     }
 
     @Override
@@ -398,7 +428,7 @@ public class CameraNectar extends CameraRGBIRDepth {
         @Override
         public void onMessage(byte[] channel, byte[] message) {
             try {
-               getConnection = checkConnection(getConnection);
+                getConnection = checkConnection(getConnection);
                 if (this.format == PixelFormat.BGR || this.format == PixelFormat.RGB) {
                     byte[] data = getConnection.get(channel);
                     setColorImage(data);
@@ -509,423 +539,29 @@ public class CameraNectar extends CameraRGBIRDepth {
         }
         return detectedMarkers;
     }
-    
-     
+
     public Jedis createConnection() {
-        return RedisClientGenerator.createConnection();
+        return redisClientGenerator.createConnection();
     }
 
     public String getRedisHost() {
-        return RedisClientGenerator.getRedisHost();
+        return redisClientGenerator.getRedisHost();
     }
 
     public void setRedisHost(String redisHost) {
-        RedisClientGenerator.setRedisHost(redisHost);
+        redisClientGenerator.setRedisHost(redisHost);
     }
 
     public void setRedisAuth(String redisAuth) {
-        RedisClientGenerator.setRedisAuth(redisAuth);
+        redisClientGenerator.setRedisAuth(redisAuth);
     }
 
     public int getRedisPort() {
-        return RedisClientGenerator.getRedisPort();
+        return redisClientGenerator.getRedisPort();
     }
 
     public void setRedisPort(int redisPort) {
-        RedisClientGenerator.setRedisPort(redisPort);
-    }
-
-
-    public synchronized String set(String key, String value) {
-        return redisExternalGet.set(key, value);
-    }
-
-    public synchronized String set(String key, String value, String nxxx, String expx, long time) {
-        return redisExternalGet.set(key, value, nxxx, expx, time);
-    }
-
-    public synchronized String get(String key) {
-        return redisExternalGet.get(key);
-    }
-
-    public synchronized Long exists(String... keys) {
-        return redisExternalGet.exists(keys);
-    }
-
-    public synchronized Boolean exists(String key) {
-        return redisExternalGet.exists(key);
-    }
-
-    public synchronized Set<String> keys(String pattern) {
-        return redisExternalGet.keys(pattern);
-    }
-
-    public synchronized String rename(String oldkey, String newkey) {
-        return redisExternalGet.rename(oldkey, newkey);
-    }
-
-    public synchronized Long renamenx(String oldkey, String newkey) {
-        return redisExternalGet.renamenx(oldkey, newkey);
-    }
-
-    public synchronized Long move(String key, int dbIndex) {
-        return redisExternalGet.move(key, dbIndex);
-    }
-
-    public synchronized String getSet(String key, String value) {
-        return redisExternalGet.getSet(key, value);
-    }
-
-    public synchronized List<String> mget(String... keys) {
-        return redisExternalGet.mget(keys);
-    }
-
-    public synchronized Long setnx(String key, String value) {
-        return redisExternalGet.setnx(key, value);
-    }
-
-    public synchronized String setex(String key, int seconds, String value) {
-        return redisExternalGet.setex(key, seconds, value);
-    }
-
-    public synchronized String mset(String... keysvalues) {
-        return redisExternalGet.mset(keysvalues);
-    }
-
-    public synchronized Long msetnx(String... keysvalues) {
-        return redisExternalGet.msetnx(keysvalues);
-    }
-
-    public synchronized Long incrBy(String key, long integer) {
-        return redisExternalGet.incrBy(key, integer);
-    }
-
-    public synchronized Double incrByFloat(String key, double value) {
-        return redisExternalGet.incrByFloat(key, value);
-    }
-
-    public synchronized Long incr(String key) {
-        return redisExternalGet.incr(key);
-    }
-
-    public synchronized Long append(String key, String value) {
-        return redisExternalGet.append(key, value);
-    }
-
-    public synchronized Long hset(String key, String field, String value) {
-        return redisExternalGet.hset(key, field, value);
-    }
-
-    public synchronized String hget(String key, String field) {
-        return redisExternalGet.hget(key, field);
-    }
-
-    public synchronized Long hsetnx(String key, String field, String value) {
-        return redisExternalGet.hsetnx(key, field, value);
-    }
-
-    public synchronized String hmset(String key, Map<String, String> hash) {
-        return redisExternalGet.hmset(key, hash);
-    }
-
-    public synchronized List<String> hmget(String key, String... fields) {
-        return redisExternalGet.hmget(key, fields);
-    }
-
-    public synchronized Long hincrBy(String key, String field, long value) {
-        return redisExternalGet.hincrBy(key, field, value);
-    }
-
-    public synchronized Double hincrByFloat(String key, String field, double value) {
-        return redisExternalGet.hincrByFloat(key, field, value);
-    }
-
-    public synchronized Boolean hexists(String key, String field) {
-        return redisExternalGet.hexists(key, field);
-    }
-
-    public synchronized Long hdel(String key, String... fields) {
-        return redisExternalGet.hdel(key, fields);
-    }
-
-    public synchronized Long hlen(String key) {
-        return redisExternalGet.hlen(key);
-    }
-
-    public synchronized Set<String> hkeys(String key) {
-        return redisExternalGet.hkeys(key);
-    }
-
-    public synchronized List<String> hvals(String key) {
-        return redisExternalGet.hvals(key);
-    }
-
-    public synchronized Map<String, String> hgetAll(String key) {
-        return redisExternalGet.hgetAll(key);
-    }
-
-    public synchronized Long rpush(String key, String... strings) {
-        return redisExternalGet.rpush(key, strings);
-    }
-
-    public synchronized Long lpush(String key, String... strings) {
-        return redisExternalGet.lpush(key, strings);
-    }
-
-    public synchronized Long llen(String key) {
-        return redisExternalGet.llen(key);
-    }
-
-    public synchronized List<String> lrange(String key, long start, long end) {
-        return redisExternalGet.lrange(key, start, end);
-    }
-
-    public synchronized String ltrim(String key, long start, long end) {
-        return redisExternalGet.ltrim(key, start, end);
-    }
-
-    public synchronized String lindex(String key, long index) {
-        return redisExternalGet.lindex(key, index);
-    }
-
-    public synchronized String lset(String key, long index, String value) {
-        return redisExternalGet.lset(key, index, value);
-    }
-
-    public synchronized Long lrem(String key, long count, String value) {
-        return redisExternalGet.lrem(key, count, value);
-    }
-
-    public synchronized String lpop(String key) {
-        return redisExternalGet.lpop(key);
-    }
-
-    public synchronized String rpop(String key) {
-        return redisExternalGet.rpop(key);
-    }
-
-    public synchronized String rpoplpush(String srckey, String dstkey) {
-        return redisExternalGet.rpoplpush(srckey, dstkey);
-    }
-
-    public synchronized Long sadd(String key, String... members) {
-        return redisExternalGet.sadd(key, members);
-    }
-
-    public synchronized Long srem(String key, String... members) {
-        return redisExternalGet.srem(key, members);
-    }
-
-    public synchronized String spop(String key) {
-        return redisExternalGet.spop(key);
-    }
-
-    public synchronized Set<String> spop(String key, long count) {
-        return redisExternalGet.spop(key, count);
-    }
-
-    public synchronized Long scard(String key) {
-        return redisExternalGet.scard(key);
-    }
-
-    public synchronized Boolean sismember(String key, String member) {
-        return redisExternalGet.sismember(key, member);
-    }
-
-    public synchronized Set<String> sinter(String... keys) {
-        return redisExternalGet.sinter(keys);
-    }
-
-    public synchronized Long sinterstore(String dstkey, String... keys) {
-        return redisExternalGet.sinterstore(dstkey, keys);
-    }
-
-    public synchronized Long zadd(String key, double score, String member) {
-        return redisExternalGet.zadd(key, score, member);
-    }
-
-    public synchronized Long zadd(String key, double score, String member, ZAddParams params) {
-        return redisExternalGet.zadd(key, score, member, params);
-    }
-
-    public synchronized Long zadd(String key, Map<String, Double> scoreMembers) {
-        return redisExternalGet.zadd(key, scoreMembers);
-    }
-
-    public synchronized Long zadd(String key, Map<String, Double> scoreMembers, ZAddParams params) {
-        return redisExternalGet.zadd(key, scoreMembers, params);
-    }
-
-    public synchronized Set<String> zrange(String key, long start, long end) {
-        return redisExternalGet.zrange(key, start, end);
-    }
-
-    public synchronized Double zincrby(String key, double score, String member) {
-        return redisExternalGet.zincrby(key, score, member);
-    }
-
-    public synchronized Double zincrby(String key, double score, String member, ZIncrByParams params) {
-        return redisExternalGet.zincrby(key, score, member, params);
-    }
-
-    public synchronized Long zcard(String key) {
-        return redisExternalGet.zcard(key);
-    }
-
-    public synchronized List<String> sort(String key, SortingParams sortingParameters) {
-        return redisExternalGet.sort(key, sortingParameters);
-    }
-
-    public synchronized List<String> blpop(int timeout, String... keys) {
-        return redisExternalGet.blpop(timeout, keys);
-    }
-
-    public synchronized List<String> blpop(String... args) {
-        return redisExternalGet.blpop(args);
-    }
-
-    public synchronized List<String> brpop(String... args) {
-        return redisExternalGet.brpop(args);
-    }
-
-    public synchronized Long sort(String key, SortingParams sortingParameters, String dstkey) {
-        return redisExternalGet.sort(key, sortingParameters, dstkey);
-    }
-
-    public synchronized Long sort(String key, String dstkey) {
-        return redisExternalGet.sort(key, dstkey);
-    }
-
-    public synchronized List<String> brpop(int timeout, String... keys) {
-        return redisExternalGet.brpop(timeout, keys);
-    }
-
-    public synchronized Long zcount(String key, double min, double max) {
-        return redisExternalGet.zcount(key, min, max);
-    }
-
-    public synchronized Long zcount(String key, String min, String max) {
-        return redisExternalGet.zcount(key, min, max);
-    }
-
-    public synchronized Long zinterstore(String dstkey, String... sets) {
-        return redisExternalGet.zinterstore(dstkey, sets);
-    }
-
-    public synchronized Long zinterstore(String dstkey, ZParams params, String... sets) {
-        return redisExternalGet.zinterstore(dstkey, params, sets);
-    }
-
-    public synchronized Long zlexcount(String key, String min, String max) {
-        return redisExternalGet.zlexcount(key, min, max);
-    }
-
-    public synchronized Long lpushx(String key, String... string) {
-        return redisExternalGet.lpushx(key, string);
-    }
-
-    public synchronized Long persist(String key) {
-        return redisExternalGet.persist(key);
-    }
-
-    public synchronized Long rpushx(String key, String... string) {
-        return redisExternalGet.rpushx(key, string);
-    }
-
-    public synchronized Long linsert(String key, BinaryClient.LIST_POSITION where, String pivot, String value) {
-        return redisExternalGet.linsert(key, where, pivot, value);
-    }
-
-    public synchronized String brpoplpush(String source, String destination, int timeout) {
-        return redisExternalGet.brpoplpush(source, destination, timeout);
-    }
-
-    public synchronized Boolean setbit(String key, long offset, boolean value) {
-        return redisExternalGet.setbit(key, offset, value);
-    }
-
-    public synchronized Boolean setbit(String key, long offset, String value) {
-        return redisExternalGet.setbit(key, offset, value);
-    }
-
-    public synchronized Boolean getbit(String key, long offset) {
-        return redisExternalGet.getbit(key, offset);
-    }
-
-    public synchronized Long setrange(String key, long offset, String value) {
-        return redisExternalGet.setrange(key, offset, value);
-    }
-
-    public synchronized String getrange(String key, long startOffset, long endOffset) {
-        return redisExternalGet.getrange(key, startOffset, endOffset);
-    }
-
-    public synchronized Long bitpos(String key, boolean value) {
-        return redisExternalGet.bitpos(key, value);
-    }
-
-    public synchronized Long bitpos(String key, boolean value, BitPosParams params) {
-        return redisExternalGet.bitpos(key, value, params);
-    }
-
-    public synchronized Long publish(String channel, String message) {
-        return redisExternalGet.publish(channel, message);
-    }
-
-    public synchronized Long bitcount(String key) {
-        return redisExternalGet.bitcount(key);
-    }
-
-    public synchronized Long bitcount(String key, long start, long end) {
-        return redisExternalGet.bitcount(key, start, end);
-    }
-
-    public synchronized Long bitop(BitOP op, String destKey, String... srcKeys) {
-        return redisExternalGet.bitop(op, destKey, srcKeys);
-    }
-
-    public synchronized String restore(String key, int ttl, byte[] serializedValue) {
-        return redisExternalGet.restore(key, ttl, serializedValue);
-    }
-
-    public synchronized String set(String key, String value, String nxxx) {
-        return redisExternalGet.set(key, value, nxxx);
-    }
-
-    public synchronized String set(String key, String value, String nxxx, String expx, int time) {
-        return redisExternalGet.set(key, value, nxxx, expx, time);
-    }
-
-    public synchronized ScanResult<String> scan(String cursor) {
-        return redisExternalGet.scan(cursor);
-    }
-
-    public synchronized ScanResult<String> scan(String cursor, ScanParams params) {
-        return redisExternalGet.scan(cursor, params);
-    }
-
-    public synchronized ScanResult<Map.Entry<String, String>> hscan(String key, String cursor) {
-        return redisExternalGet.hscan(key, cursor);
-    }
-
-    public synchronized ScanResult<Map.Entry<String, String>> hscan(String key, String cursor, ScanParams params) {
-        return redisExternalGet.hscan(key, cursor, params);
-    }
-
-    public synchronized ScanResult<String> sscan(String key, String cursor) {
-        return redisExternalGet.sscan(key, cursor);
-    }
-
-    public synchronized ScanResult<String> sscan(String key, String cursor, ScanParams params) {
-        return redisExternalGet.sscan(key, cursor, params);
-    }
-
-    public synchronized List<String> blpop(int timeout, String key) {
-        return redisExternalGet.blpop(timeout, key);
-    }
-
-    public synchronized List<String> brpop(int timeout, String key) {
-        return redisExternalGet.brpop(timeout, key);
+        redisClientGenerator.setRedisPort(redisPort);
     }
 
 }

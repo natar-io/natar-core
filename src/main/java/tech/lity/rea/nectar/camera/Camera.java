@@ -138,7 +138,7 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
         }
         return this;
     }
-
+    
     /**
      * Get the information if the camera is started (ready to give images).
      *
@@ -278,16 +278,6 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
     public PImage getPImageCopyTo(PImage out) {
         ImageUtils.IplImageToPImage(currentImage, this.format, out);
         return out;
-    }
-
-    private Object touchInput = null;
-
-    public void setTouchInput(Object touchInput) {
-        this.touchInput = touchInput;
-    }
-
-    public Object getTouchInput() {
-        return touchInput;
     }
 
     private final List<TrackedObject> sheets = Collections.synchronizedList(new ArrayList<TrackedObject>());
@@ -640,7 +630,7 @@ public abstract class Camera extends Observable implements PConstants, WithSize 
         this.extrinsics.set(extrinsics);
         this.hasExtrinsics = true;
     }
-
+    
     public int getWidth() {
         return width;
     }

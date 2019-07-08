@@ -53,7 +53,10 @@ public class MarkerBoardSvgNectar extends MarkerBoard {
 
     public void load(RedisClient client) {
         try {
-            String xmlText = client.createConnection().get("markerboards:" + fileName);
+            String xmlText = client.createConnection().get("markerboards:xml:" + fileName);
+            if (xmlText == null) {
+                throw new Exception("Impossible to read: " + "markerboards:xml:" + fileName);
+            }
             XML xml = XML.parse(xmlText);
             markersFromSVG = (new MarkerSVGReader(xml)).getList();
         } catch (Exception e) {
@@ -107,8 +110,11 @@ public class MarkerBoardSvgNectar extends MarkerBoard {
             return;
         }
 
-        update(newPos, id);
+        float distance = currentPos.dist(lastPos.get(id));
+        lastDistance.set(id, distance);
 
+        update(newPos, id);
+        lastPos.set(id, currentPos);
     }
 
     private void update(PMatrix3D newPos, int id) {

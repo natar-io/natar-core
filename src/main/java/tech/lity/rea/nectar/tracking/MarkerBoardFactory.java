@@ -22,6 +22,9 @@ package tech.lity.rea.nectar.tracking;
 import tech.lity.rea.nectar.tracking.MarkerBoard.MarkerType;
 import java.util.ArrayList;
 import java.util.HashMap;
+import processing.data.JSONArray;
+import tech.lity.rea.nectar.camera.RedisClientImpl;
+import tech.lity.rea.nectar.markers.MarkerList;
 
 /**
  *
@@ -31,6 +34,11 @@ public class MarkerBoardFactory {
 
     private static final HashMap<String, MarkerBoard> allBoards = new HashMap<>();
     public static final int DEFAULT_WIDTH = 100, DEFAULT_HEIGHT = 100;
+
+    /**
+     * Experimental and buggy, to fix maybe.
+     */
+    public static boolean USE_JSON = false;
 
     /**
      * Not Dot in filename: load from redis
@@ -53,7 +61,6 @@ public class MarkerBoardFactory {
      * @return
      */
     public static MarkerBoard create(String fileName, float width, float height) {
-        System.out.println("!!!!!!!!!!!!!!!!!!!!!!!...");
         if (allBoards.containsKey(fileName)) {
             return allBoards.get(fileName);
         }
@@ -70,8 +77,22 @@ public class MarkerBoardFactory {
             }
 
             if (type == MarkerType.SVG_NECTAR) {
-                System.out.println("Loading Natar markerboard (2)...");
-                output = new MarkerBoardSvgNectar(fileName);
+                
+                /**
+                 * Experimental and buggy, to fix maybe.
+                 */
+                if (USE_JSON) {
+                    String key = "markerboards:json:" + fileName;
+                    JSONArray markersJson = JSONArray.parse(RedisClientImpl.getMainConnection().createConnection().get(key));  // TODO: check that the get succeeded
+                    if (markersJson == null) {
+                        System.out.println("Cannot read marker configuration: " + fileName);
+                    }
+                    MarkerList markers = MarkerList.createFromJSON(markersJson);
+                    output = new MarkerBoardSvg(fileName, markers);
+                    System.out.println("Loaded markerboraBoard json: " + fileName);
+                } else {
+                    output = new MarkerBoardSvgNectar(fileName);
+                }
             }
             if (type == MarkerType.SVG) {
                 output = new MarkerBoardSvg(fileName, width, height);
@@ -107,7 +128,6 @@ public class MarkerBoardFactory {
                 return MarkerType.JAVACV_FINDER;
             }
         } else {
-            System.out.println("Loading Natar markerboard...");
             return MarkerType.SVG_NECTAR;
         }
         return MarkerType.INVALID;

@@ -19,10 +19,16 @@
  */
 package tech.lity.rea.nectar.calibration;
 
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.xml.parsers.ParserConfigurationException;
+import org.xml.sax.SAXException;
 import processing.core.PApplet;
 import processing.core.PMatrix3D;
 import processing.core.PVector;
 import processing.data.XML;
+import tech.lity.rea.nectar.camera.RedisClient;
 import toxi.geom.Plane;
 import toxi.geom.Vec3D;
 import toxi.math.MathUtils;
@@ -45,10 +51,11 @@ public class PlaneCalibration extends Calibration {
 
     private float height = HEIGHT_NOT_SET;
     private Plane plane;
-    
-    public PlaneCalibration(){}
-    
-    public PlaneCalibration(Plane p, float height){
+
+    public PlaneCalibration() {
+    }
+
+    public PlaneCalibration(Plane p, float height) {
         this.plane = p;
         this.height = height;
     }
@@ -179,6 +186,32 @@ public class PlaneCalibration extends Calibration {
     @Override
     public void loadFrom(PApplet parent, String fileName) {
         XML root = parent.loadXML(fileName);
+        load(root);
+    }
+
+    /**
+     *
+     * @param XMLContent
+     */
+    @Override
+    public void loadFrom(String XMLContent) {
+        try {
+            XML root = XML.parse(XMLContent);
+            load(root);
+        } catch (IOException ex) {
+            Logger.getLogger(PlaneCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ParserConfigurationException ex) {
+            Logger.getLogger(PlaneCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SAXException ex) {
+            Logger.getLogger(PlaneCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    /**
+     *
+     * @param root
+     */
+    public void load(XML root) {
         XML planeNode = root.getChild(PLANE_XML_NAME);
         XML posNode = planeNode.getChild(PLANE_POS_XML_NAME);
         XML normalNode = planeNode.getChild(PLANE_NORMAL_XML_NAME);

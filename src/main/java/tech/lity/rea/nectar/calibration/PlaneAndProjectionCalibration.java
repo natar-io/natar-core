@@ -19,9 +19,7 @@
  */
 package tech.lity.rea.nectar.calibration;
 
-import processing.core.PApplet;
 import processing.core.PMatrix3D;
-import processing.data.XML;
 import toxi.geom.Plane;
 import toxi.geom.Vec3D;
 
@@ -29,17 +27,11 @@ import toxi.geom.Vec3D;
  *
  * @author Jeremy Laviole laviole@rea.lity.tech
  */
-public class PlaneAndProjectionCalibration extends Calibration {
+public class PlaneAndProjectionCalibration {
 
     private HomographyCalibration homographyCalibration = new HomographyCalibration();
     private PlaneCalibration planeCalibration = new PlaneCalibration();
 
-
-    @Override
-    public void loadFrom(PApplet parent, String fileName) {
-        planeCalibration.loadFrom(parent, fileName);
-        homographyCalibration.loadFrom(parent, fileName);
-    }
 
     public Vec3D project(Vec3D point) {
         Vec3D out = new Vec3D();
@@ -56,21 +48,8 @@ public class PlaneAndProjectionCalibration extends Calibration {
         projectedPoint.z = getPlane().getDistanceToPoint(point);
     }
 
-    @Override
     public boolean isValid() {
         return planeCalibration.isValid() && homographyCalibration.isValid();
-    }
-
-    @Override
-    public void addTo(XML xml) {
-        planeCalibration.addTo(xml);
-        homographyCalibration.addTo(xml);
-    }
-
-    @Override
-    public void replaceIn(XML xml) {
-        planeCalibration.replaceIn(xml);
-        homographyCalibration.replaceIn(xml);
     }
 
     public PlaneCalibration getPlaneCalibration() {
@@ -150,11 +129,6 @@ public class PlaneAndProjectionCalibration extends Calibration {
 
     public Plane getPlane() {
         return planeCalibration.getPlane();
-    }
-
-    @Override
-    public void addTo(StringBuilder yaml) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
 }

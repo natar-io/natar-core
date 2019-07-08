@@ -71,6 +71,14 @@ public class VideoEmitter extends RedisClientImpl {
         redis.publish(id, imageInfo.toString().getBytes());
     }
 
+    public void republish() {
+        byte[] id =  output.getBytes();
+        JSONObject imageInfo = new JSONObject();
+        imageInfo.setLong("timestamp", System.currentTimeMillis());
+        imageInfo.setLong("imageCount", colorImageCount);
+        redis.publish(id, imageInfo.toString().getBytes());
+    }
+
     byte[] integersToBytes(int[] values) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(baos);
@@ -81,13 +89,14 @@ public class VideoEmitter extends RedisClientImpl {
         return baos.toByteArray();
     }
 
-
     private void sendParams(PImage img) {
+        System.out.println("PImage: " + img);
+        System.out.println("connec: " + redis);
         redis.set(output + ":width", Integer.toString(img.width));
         redis.set(output + ":height", Integer.toString(img.height));
         redis.set(output + ":channels", Integer.toString(4));
         redis.clientSetname("VideoEmitter");
-        
+
         if (img.format == RGB) {
             redis.set(output + ":pixelformat", Camera.PixelFormat.RGB.toString());
         }
