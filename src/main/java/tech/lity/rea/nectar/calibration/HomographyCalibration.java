@@ -119,31 +119,37 @@ public class HomographyCalibration extends Calibration {
     @Override
     public void loadFrom(PApplet parent, String fileName) {
         XML root = parent.loadXML(fileName);
-        XML homographyNode = root.getChild(HOMOGRAPHY_XML_NAME);
-        pmatrix = new PMatrix3D();
-        pmatrix.m00 = homographyNode.getFloat("m00");
-        pmatrix.m01 = homographyNode.getFloat("m01");
-        pmatrix.m02 = homographyNode.getFloat("m02");
-        pmatrix.m03 = homographyNode.getFloat("m03");
-        pmatrix.m10 = homographyNode.getFloat("m10");
-        pmatrix.m11 = homographyNode.getFloat("m11");
-        pmatrix.m12 = homographyNode.getFloat("m12");
-        pmatrix.m13 = homographyNode.getFloat("m13");
-        pmatrix.m20 = homographyNode.getFloat("m20");
-        pmatrix.m21 = homographyNode.getFloat("m21");
-        pmatrix.m22 = homographyNode.getFloat("m22");
-        pmatrix.m23 = homographyNode.getFloat("m23");
-        pmatrix.m30 = homographyNode.getFloat("m30");
-        pmatrix.m31 = homographyNode.getFloat("m31");
-        pmatrix.m32 = homographyNode.getFloat("m32");
-        pmatrix.m33 = homographyNode.getFloat("m33");
-        initMat();
+        loadData(root);
     }
 
-    public void loadFrom(String fileName) {
+    public void loadFromFile(String fileName) {
         try {
             XML root = new XML(new File(fileName));
-            XML homographyNode = root.getChild(HOMOGRAPHY_XML_NAME);
+            loadData(root);
+        } catch (IOException ex) {
+            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ParserConfigurationException ex) {
+            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SAXException ex) {
+            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    public void loadFrom(String data) {
+        try {
+            XML root = XML.parse(data);
+            loadData(root);
+        } catch (IOException ex) {
+            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ParserConfigurationException ex) {
+            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SAXException ex) {
+            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    private void loadData(XML root){
+           XML homographyNode = root.getChild(HOMOGRAPHY_XML_NAME);
             pmatrix = new PMatrix3D();
             pmatrix.m00 = homographyNode.getFloat("m00");
             pmatrix.m01 = homographyNode.getFloat("m01");
@@ -162,13 +168,6 @@ public class HomographyCalibration extends Calibration {
             pmatrix.m32 = homographyNode.getFloat("m32");
             pmatrix.m33 = homographyNode.getFloat("m33");
             initMat();
-        } catch (IOException ex) {
-            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (ParserConfigurationException ex) {
-            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (SAXException ex) {
-            Logger.getLogger(HomographyCalibration.class.getName()).log(Level.SEVERE, null, ex);
-        }
     }
 
     public void loadFromJSONString(String data) {
