@@ -247,7 +247,7 @@ public class CameraNectar extends CameraRGBIRDepth {
                 e.printStackTrace();
             }
             if (!getMode) {
-                new RedisThread(redis2, new ImageListener(depthCamera.getPixelFormat()), cameraDescription + ":depth:raw").start();
+                new RedisThread(redis2, new ImageListener(depthCamera.getPixelFormat()), cameraDescription + ":depth").start();
             }
         }
     }
@@ -296,7 +296,7 @@ public class CameraNectar extends CameraRGBIRDepth {
                     setColorImage(redisGet.get(cameraDescription.getBytes()));
                 }
                 if (useDepth) {
-                    setDepthImage(redisGet.get((cameraDescription + ":depth:raw").getBytes()));
+                    setDepthImage(redisGet.get((cameraDescription + ":depth").getBytes()));
                 }
                 // sleep only
                 Thread.sleep(15);
@@ -315,16 +315,23 @@ public class CameraNectar extends CameraRGBIRDepth {
     private opencv_core.IplImage rawVideoImage = null;
     private opencv_core.IplImage rawDepthImage = null;
 
+    private opencv_core.IplImage rawVideoImageBuffer = null;
+    private opencv_core.IplImage rawDepthImageBuffer = null;
+
+    private opencv_core.IplImage currentRawVideoImage = null;
+    private opencv_core.IplImage currentRawDepthImage = null;
+
     // Note: Must work with 1 channel ?!
     protected void setColorImage(byte[] message) {
         int channels = 3;
         if (rawVideoImage == null || rawVideoImage.width() != colorCamera.width || rawVideoImage.height() != colorCamera.height) {
             rawVideoImage = opencv_core.IplImage.create(colorCamera.width, colorCamera.height, IPL_DEPTH_8U, 3);
+            rawVideoImageBuffer = opencv_core.IplImage.create(colorCamera.width, colorCamera.height, IPL_DEPTH_8U, 3);
         }
+
         int frameSize = colorCamera.width * colorCamera.height * channels;
         rawVideoImage.getByteBuffer().put(message, 0, frameSize);
         colorCamera.updateCurrentImage(rawVideoImage);
-//        colorCamera.updateCurrentImage(rawVideoImage);
 
         this.setChanged();
         this.notifyObservers("image");
@@ -338,10 +345,25 @@ public class CameraNectar extends CameraRGBIRDepth {
         // TODO: Handle as a sort buffer instead of byte.
         if (rawDepthImage == null || rawDepthImage.width() != depthCamera.width || rawDepthImage.height() != depthCamera.height) {
             rawDepthImage = opencv_core.IplImage.create(depthCamera.width, depthCamera.height, iplDepth, channels);
-        }
-        rawDepthImage.getByteBuffer().put(message, 0, frameSize);
-        depthCamera.updateCurrentImage(rawDepthImage);
+            rawDepthImageBuffer = opencv_core.IplImage.create(depthCamera.width, depthCamera.height, iplDepth, channels);
 
+            currentRawDepthImage = rawDepthImage;
+        }
+
+        // Try some buffering.
+        if (currentRawDepthImage == rawDepthImage) {
+            rawDepthImage.getByteBuffer().put(message, 0, frameSize);
+            depthCamera.updateCurrentImage(rawDepthImage);
+            depthCamera.updateCurrentImage(rawDepthImage);
+            currentRawDepthImage = rawDepthImageBuffer;
+        } else {
+            rawDepthImageBuffer.getByteBuffer().put(message, 0, frameSize);
+            depthCamera.updateCurrentImage(rawDepthImageBuffer);
+            depthCamera.updateCurrentImage(rawDepthImageBuffer);
+            currentRawDepthImage = rawDepthImage;
+        }
+
+//        rawDepthImage.getByteBuffer().put(message, 0, frameSize);
         // TODO: Send Touch Event ?
         if (getActingCamera() == IRCamera) {
             ((WithTouchInput) depthCamera).newTouchImageWithColor(IRCamera.currentImage);
@@ -436,8 +458,6 @@ public class CameraNectar extends CameraRGBIRDepth {
                 if (this.format == PixelFormat.OPENNI_2_DEPTH) {
                     byte[] data = getConnection.get(channel);
                     setDepthImage(data);
-//                System.out.println("received depth message image");
-
                 }
             } catch (Exception e) {
                 System.out.println("Exception reading data: ");

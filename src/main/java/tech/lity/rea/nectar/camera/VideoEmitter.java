@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.bytedeco.javacpp.opencv_core.IplImage;
 import static processing.core.PConstants.ARGB;
 import static processing.core.PConstants.RGB;
 import processing.core.PImage;
@@ -32,6 +33,11 @@ public class VideoEmitter extends RedisClientImpl {
     public VideoEmitter() {
     }
 
+    public VideoEmitter(RedisClient client, String key) {
+        super(client);
+        this.output = key;
+        redis = createConnection();
+    }
     public VideoEmitter(String host, int port, String auth, String key) {
         this.setRedisHost(host);
         this.setRedisPort(port);
@@ -60,19 +66,28 @@ public class VideoEmitter extends RedisClientImpl {
             return;
         }
 
-        colorImageCount++;
+        sendRawImage(imageData, time);
 
-        String name = output;
-        byte[] id = name.getBytes();
+    }
+
+    public void sendRawImage(byte[] imageData, int time) {
+        colorImageCount++;
+        byte[] id = output.getBytes();
         JSONObject imageInfo = new JSONObject();
         imageInfo.setLong("timestamp", time);
         imageInfo.setLong("imageCount", colorImageCount);
-        redis.set(id, imageData);
-        redis.publish(id, imageInfo.toString().getBytes());
+        try {
+            redis.set(id, imageData);
+            redis.publish(id, imageInfo.toString().getBytes());
+        } catch (Exception e) {
+            System.out.println("Sending: " + output + " : " + imageInfo.toString());
+            System.out.println("Exception: " + e);
+            e.printStackTrace();
+        }
     }
 
     public void republish() {
-        byte[] id =  output.getBytes();
+        byte[] id = output.getBytes();
         JSONObject imageInfo = new JSONObject();
         imageInfo.setLong("timestamp", System.currentTimeMillis());
         imageInfo.setLong("imageCount", colorImageCount);

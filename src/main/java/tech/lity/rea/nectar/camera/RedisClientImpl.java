@@ -21,15 +21,27 @@ public class RedisClientImpl implements RedisClient {
     private String redisAuth = NO_AUTH;
 
     private static final RedisClientImpl mainClient = new RedisClientImpl();
-    
-    public static RedisClientImpl getMainConnection(){
+
+    public static RedisClientImpl getMainConnection() {
         return mainClient;
     }
-    
+
+    public static Jedis createMainConnection() {
+        return mainClient.createConnection();
+    }
+
+    public RedisClientImpl() {
+    }
+
+    public RedisClientImpl(RedisClient client) {
+        this.setRedisHost(client.getRedisHost());
+        this.setRedisPort(client.getRedisPort());
+    }
+
     @Override
     public Jedis createConnection() {
         Jedis jedis = new Jedis(redisHost, redisPort);
-        if(this.redisAuth == null ? NO_AUTH != null : !this.redisAuth.equals(NO_AUTH)){
+        if (this.redisAuth == null ? NO_AUTH != null : !this.redisAuth.equals(NO_AUTH)) {
             jedis.auth(redisAuth);
         }
         return jedis;
@@ -44,7 +56,7 @@ public class RedisClientImpl implements RedisClient {
     public void setRedisHost(String redisHost) {
         this.redisHost = redisHost;
     }
-    
+
     @Override
     public void setRedisAuth(String redisAuth) {
         this.redisAuth = redisAuth;

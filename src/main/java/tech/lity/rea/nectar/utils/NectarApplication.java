@@ -64,8 +64,6 @@ public abstract class NectarApplication {
             Jedis redis = new Jedis(host, Integer.parseInt(port));
             if (redis == null) {
                 throw new Exception("Cannot connect to server. ");
-            } else {
-                System.out.println("PoseEstimator - Connected to Redis.");
             }
             return redis;
         } catch (Exception e) {
@@ -96,7 +94,7 @@ public abstract class NectarApplication {
     public static void die(String why, boolean usage) {
         if (usage) {
             HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp("PoseEstimator", options);
+            formatter.printHelp("Natar application", options);
         }
         System.out.println(why);
         System.exit(-1);
