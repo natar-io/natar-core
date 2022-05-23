@@ -1,4 +1,3 @@
-## Nectar helpers for Processing
+## Natar Core
 
-Helpers for camera and markers. 
-
+### Deprecated with PapARt 1.6
